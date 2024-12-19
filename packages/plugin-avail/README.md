@@ -5,13 +5,15 @@ This is a plugin for using Eliza to interact with the Avail DA network. Defaults
 ## Actions
 - **transfer**: This action enables the transfer of AVAIL tokens from the agent's wallet (as defined by the keyring generated from `AVAIL_SEED`) to another wallet. To use just mention the transfer of AVAIL tokens to an Avail account.
 
-name: `SEND_AVAIL`
-Message sample: `Send 100 AVAIL to 5GWbvXjefEvXXETtKQH7YBsUaPc379KAQATW1eqeJT26cbsK`
+    - name: `SEND_AVAIL`
+
+    - Message sample: `Send 100 AVAIL to 5GWbvXjefEvXXETtKQH7YBsUaPc379KAQATW1eqeJT26cbsK`
 
 - **submitData**: This action enables the submission of any arbitrary data to the Avail DA network. To use just mention that you need to send "any data" to Avail. You can customize the Avail `appID` through which the agent submits the data by modifying the `AVAIL_APP_ID` env config.
 
-name: `SUBMIT_DATA`
-Message sample: `Submit the following data to Avail "Hello World!"`
+    - name: `SUBMIT_DATA`
+
+    - Message sample: `Submit the following data to Avail "Hello World!"`
 
 ## Resources
 - [Avail Documentation](https://docs.availproject.org/)
