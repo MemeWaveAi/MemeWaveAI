@@ -1,5 +1,5 @@
 /**
- * NeoTrader Plugin - Autonomous Trading Actions
+ * Auto Trader Plugin - Autonomous Trading Actions
  *
  * This module implements autonomous trading functionality for the GOAT plugin.
  * It handles trade execution, position management, and risk evaluation.
@@ -29,22 +29,26 @@ import { PublicKey, Keypair, Connection, VersionedTransaction } from "@solana/we
 import { AutoClient } from "@ai16z/client-auto";
 import { loadTokenAddresses } from "./tokenUtils";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
+import { TokenProvider, ProcessedTokenData } from "@ai16z/plugin-solana";
 
 /**
  * Safety limits and trading parameters
  */
 const SAFETY_LIMITS = {
-    MINIMUM_TRADE: 0.01,        // Minimum trade size in SOL
+    MINIMUM_TRADE: 0.01,        // Minimum 0.01 SOL per trade
     MAX_POSITION_SIZE: 0.1,     // Maximum 10% of token liquidity
     MAX_SLIPPAGE: 0.05,        // Maximum 5% slippage allowed
-    MIN_LIQUIDITY: 5000,       // Minimum $5000 liquidity required
-    MIN_VOLUME: 10000,         // Minimum $10000 24h volume required
+    MIN_LIQUIDITY: 1000,       // Minimum $1000 liquidity required
+    MIN_VOLUME: 2000,          // Minimum $2000 24h volume required
     MIN_TRUST_SCORE: 0.4,      // Minimum trust score to trade
     STOP_LOSS: 0.20,          // 20% stop loss trigger
     CHECK_INTERVAL: 5 * 60 * 1000,  // Check every 5 minutes
-    TAKE_PROFIT: 0.12,          // Take profit at 12% gain
-    TRAILING_STOP: 0.20,       // 20% trailing stop loss
-    PARTIAL_TAKE: 0.06,         // Take 6% profit at 6% gain
+    TAKE_PROFIT: 0.12,         // Take profit at 12% gain
+    TRAILING_STOP: 0.20,       // 20% trailing stop from highest
+    PARTIAL_TAKE: 0.06,        // Take 50% profit at 6% gain
+    REENTRY_DELAY: 60 * 60 * 1000, // Wait 1 hour before re-entering
+    MAX_ACTIVE_POSITIONS: 5,    // Maximum concurrent positions
+    MIN_WALLET_BALANCE: 0.05,   // Keep minimum 0.05 SOL in wallet
 };
 
 /**
@@ -160,6 +164,33 @@ const validateWalletAddress = (address: string | undefined): boolean => {
 // Add position tracking
 const positions = new Map<string, Position>();
 
+// Add position persistence
+async function savePositions(runtime: IAgentRuntime): Promise<void> {
+    try {
+        const positionsArray = Array.from(positions.entries());
+        await runtime.cacheManager.set("trading_positions", positionsArray);
+        elizaLogger.log("Positions saved:", positionsArray);
+    } catch (error) {
+        elizaLogger.error("Error saving positions:", error);
+    }
+}
+
+async function loadPositions(runtime: IAgentRuntime): Promise<void> {
+    try {
+        const savedPositions = await runtime.cacheManager.get<Array<[string, Position]>>("trading_positions");
+        elizaLogger.log("Loading saved positions:", savedPositions);
+
+        if (savedPositions) {
+            positions.clear();
+            for (const [key, position] of savedPositions) {
+                positions.set(key, position);
+            }
+        }
+    } catch (error) {
+        elizaLogger.error("Error loading positions:", error);
+    }
+}
+
 // Add sell action
 const sellTokenAction: Action = {
     name: "SELL_TOKEN",
@@ -210,7 +241,12 @@ const sellTokenAction: Action = {
 
 
 // Add helper function for selling
-async function sellPosition(position: Position, currentPrice: number, runtime: IAgentRuntime): Promise<boolean> {
+async function sellPosition(
+    position: Position,
+    currentPrice: number,
+    runtime: IAgentRuntime,
+    sellType: 'TAKE_PROFIT' | 'PARTIAL_TAKE' | 'TRAILING_STOP' | 'STOP_LOSS' = 'STOP_LOSS'
+): Promise<boolean> {
     try {
         elizaLogger.log("Attempting to sell position:", {
             token: position.token,
@@ -241,7 +277,24 @@ async function sellPosition(position: Position, currentPrice: number, runtime: I
             position.exitTimestamp = Date.now();
 
             const pnl = ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
-            elizaLogger.log(`Position closed: ${position.token}, PnL: ${pnl.toFixed(2)}%`);
+
+            // Customize tweet based on sell type
+            const emoji = pnl >= 0 ? '🟢' : '🔴';
+            let tweetPrefix = '';
+            switch (sellType) {
+                case 'TAKE_PROFIT':
+                    tweetPrefix = `${emoji} Take Profit`;
+                    break;
+                case 'PARTIAL_TAKE':
+                    tweetPrefix = `${emoji} Partial Take Profit`;
+                    break;
+                case 'TRAILING_STOP':
+                    tweetPrefix = `${emoji} Trailing Stop`;
+                    break;
+                case 'STOP_LOSS':
+                    tweetPrefix = `${emoji} Stop Loss`;
+                    break;
+            }
 
             await tweetTradeUpdate(runtime, {
                 action: 'SELL',
@@ -249,7 +302,8 @@ async function sellPosition(position: Position, currentPrice: number, runtime: I
                 amount: position.amount,
                 price: currentPrice,
                 signature: tradeResult.signature,
-                pnl
+                pnl,
+                sellType: tweetPrefix
             });
         }
 
@@ -303,6 +357,7 @@ const autonomousTradeAction: Action = {
     name: "AUTONOMOUS_TRADE",
     description: "Execute autonomous trades based on market conditions",
     similes: ["TRADE", "AUTO_TRADE", "TRADE_SOLANA", "TRADE_SOL", "AUTONOMOUS"],
+    examples: [],
     autoStart: true,
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         try {
@@ -350,21 +405,27 @@ const autonomousTradeAction: Action = {
                         return;
                     }
 
-                    // Filter to get only the best pair for each token
+                    // Get unique pairs
                     const uniquePairs = filterUniquePairs(data.pairs);
-                    elizaLogger.log(`Processing ${uniquePairs.length} unique pairs...`);
+                    elizaLogger.log(`Processing ${uniquePairs.length} pairs...`);
 
                     // First monitor existing positions
                     await monitorExistingPositions(uniquePairs, runtime, callback);
 
-                    // Then look for new trade opportunities
+                    // Then look for new opportunities
                     await evaluateNewTrades(uniquePairs, runtime, callback);
 
                     // Save updated positions
                     await savePositions(runtime);
 
+                    // Log current state
+                    elizaLogger.log("Current positions:", {
+                        count: positions.size,
+                        positions: Array.from(positions.entries())
+                    });
+
                 } catch (error) {
-                    elizaLogger.error("Trading cycle error:", error instanceof Error ? error.message : error);
+                    elizaLogger.error("Trading cycle error:", error);
                 }
             };
 
@@ -405,6 +466,33 @@ const autonomousTradeAction: Action = {
     }
 };
 
+// Add RPC fallbacks and retry logic
+const RPC_ENDPOINTS = [
+    "https://api.mainnet-beta.solana.com",
+    "https://solana-api.projectserum.com",
+    "https://rpc.ankr.com/solana"
+];
+
+async function getConnection(runtime: IAgentRuntime, retryCount = 0): Promise<Connection> {
+    const customRpc = runtime.getSetting("RPC_URL");
+    const endpoints = customRpc ? [customRpc, ...RPC_ENDPOINTS] : RPC_ENDPOINTS;
+
+    try {
+        const endpoint = endpoints[retryCount % endpoints.length];
+        const connection = new Connection(endpoint, 'confirmed');
+
+        // Test connection
+        await connection.getLatestBlockhash();
+        return connection;
+    } catch (error) {
+        if (retryCount < endpoints.length * 2) { // Try each endpoint twice
+            elizaLogger.warn(`RPC connection failed, trying next endpoint (attempt ${retryCount + 1})`);
+            return getConnection(runtime, retryCount + 1);
+        }
+        throw error;
+    }
+}
+
 /**
  * Executes a trade with the given parameters
  * @param runtime Agent runtime environment
@@ -418,7 +506,8 @@ async function executeTrade(
         amount: number;
         slippage: number;
         isSell?: boolean;
-    }
+    },
+    retryCount = 0
 ): Promise<any> {
     try {
         elizaLogger.log("Executing trade with params:", params);
@@ -439,7 +528,7 @@ async function executeTrade(
         });
 
         // Validate minimum amount
-        if (params.amount < SAFETY_LIMITS.MINIMUM_TRADE) {
+        if (!params.isSell && params.amount < SAFETY_LIMITS.MINIMUM_TRADE) {
             elizaLogger.warn("Trade amount too small:", {
                 amount: params.amount,
                 minimumRequired: SAFETY_LIMITS.MINIMUM_TRADE
@@ -455,9 +544,7 @@ async function executeTrade(
         }
 
         const walletKeypair = getWalletKeypair(runtime);
-        const connection = new Connection(
-            runtime.getSetting("RPC_URL") || "https://api.mainnet-beta.solana.com"
-        );
+        const connection = await getConnection(runtime);
 
         // Setup swap parameters
         const solAddress = "So11111111111111111111111111111111111111112"; // SOL
@@ -529,32 +616,53 @@ async function executeTrade(
         const transactionBuf = Buffer.from(swapData.swapTransaction, 'base64');
         const tx = VersionedTransaction.deserialize(transactionBuf);
 
-        // Get fresh blockhash
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        // Get fresh blockhash and sign transaction
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
         tx.message.recentBlockhash = blockhash;
-
-        // Sign and send
         tx.sign([walletKeypair]);
-        const signature = await connection.sendTransaction(tx);
 
-        // Wait for confirmation with retry
+        // Send with confirmation
+        const signature = await connection.sendTransaction(tx, {
+            skipPreflight: false,
+            preflightCommitment: 'confirmed',
+            maxRetries: 3
+        });
+
+        // Wait for confirmation
         const confirmation = await connection.confirmTransaction({
             signature,
             blockhash,
             lastValidBlockHeight
         });
 
+        if (confirmation.value.err) {
+            throw new Error(`Transaction failed: ${confirmation.value.err}`);
+        }
+
         return { success: true, signature, confirmation };
+
     } catch (error) {
+        // Handle blockhash errors with retry
+        if (
+            error.message?.includes("Blockhash not found") &&
+            retryCount < 3
+        ) {
+            elizaLogger.warn(`Blockhash error, retrying (${retryCount + 1}/3)...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return executeTrade(runtime, params, retryCount + 1);
+        }
+
         elizaLogger.error("Trade execution failed:", {
             error: error instanceof Error ? error.message : error,
             stack: error instanceof Error ? error.stack : undefined,
-            params
+            params,
+            retryCount
         });
+
         return {
             success: false,
-            error: String(error),
-            recoverable: true // Indicate if error is temporary
+            error: error.message || error,
+            recoverable: error.message?.includes("Blockhash not found")
         };
     }
 }
@@ -703,11 +811,11 @@ export async function getOnChainActions<TWalletClient extends WalletClient>({
     });
 
     // Auto-start autonomous trading
-    if (AutoClient.isAutoClient) {
+    if (typeof AutoClient !== 'undefined' && AutoClient.isAutoClient) {
         elizaLogger.log("Auto-starting autonomous trading...");
         try {
             await autonomousTradeAction.handler(
-                AutoClient.runtime,
+                (AutoClient as any).runtime,
                 { content: { source: "auto" } } as Memory,
                 undefined,
                 undefined,
@@ -747,7 +855,10 @@ function decodeBase58(str: string): Uint8Array {
     return new Uint8Array(bytes);
 }
 
-// Add tweet function for trade notifications
+// Add at the top with other constants
+let cachedTwitterClient: typeof TwitterClientInterface | null = null;
+
+// Modify tweetTradeUpdate to use cached client
 async function tweetTradeUpdate(
     runtime: IAgentRuntime,
     params: {
@@ -757,6 +868,7 @@ async function tweetTradeUpdate(
         price: number;
         signature: string;
         pnl?: number;
+        sellType?: string;
     }
 ): Promise<void> {
     try {
@@ -768,18 +880,21 @@ async function tweetTradeUpdate(
         if (action === 'BUY') {
             content = `🤖 Bought $${token}\n💰 ${amount.toFixed(3)} SOL @ $${price.toFixed(6)}\n🔗 tx: ${explorerUrl}`;
         } else {
-            content = `${pnl && pnl > 0 ? '🟢' : '🔴'} Sold $${token}\n💰 ${amount.toFixed(3)} SOL @ $${price.toFixed(6)}\n📈 PnL: ${pnl?.toFixed(2)}%\n🔗 tx: ${explorerUrl}`;
+            content = `${params.sellType || (pnl && pnl > 0 ? '🟢' : '🔴')} Sold $${token}\n💰 ${amount.toFixed(3)} SOL @ $${price.toFixed(6)}\n📈 PnL: ${pnl?.toFixed(2)}%\n🔗 tx: ${explorerUrl}`;
         }
 
         elizaLogger.log("Posting trade update:", content);
 
-        // Initialize Twitter client and post directly
-        const client = await TwitterClientInterface.start(runtime);
-        if (!client) {
+        // Use cached client or initialize new one
+        if (!cachedTwitterClient) {
+            cachedTwitterClient = await TwitterClientInterface.start(runtime);
+        }
+
+        if (!cachedTwitterClient) {
             throw new Error("Failed to initialize Twitter client");
         }
 
-        const response = await client.post.client.twitterClient.sendTweet(content);
+        const response = await cachedTwitterClient.post.client.twitterClient.sendTweet(content);
         elizaLogger.log("Trade tweet posted successfully:", response);
 
     } catch (error) {
@@ -817,6 +932,11 @@ async function monitorExistingPositions(
                 continue;
             }
 
+            // Add token analysis before sell decisions
+            elizaLogger.log(`Analyzing token before sell decision...`);
+            const tokenAnalysis = await analyzeToken(runtime, pair.baseToken.address);
+            elizaLogger.log(`Token analysis for ${pair.baseToken.symbol}:`, tokenAnalysis);
+
             const currentPrice = Number(pair.priceUsd);
             const positionSize = currentPosition.amount;
 
@@ -842,7 +962,7 @@ async function monitorExistingPositions(
                     ...currentPosition,
                     tokenAddress: pair.baseToken.address,
                     amount: positionSize
-                }, currentPrice, runtime);
+                }, currentPrice, runtime, 'TAKE_PROFIT');
                 continue;
             }
 
@@ -857,7 +977,7 @@ async function monitorExistingPositions(
                     ...currentPosition,
                     tokenAddress: pair.baseToken.address,
                     amount: halfPositionSize
-                }, currentPrice, runtime);
+                }, currentPrice, runtime, 'PARTIAL_TAKE');
                 currentPosition.amount *= 0.5;
                 currentPosition.partialTakeProfit = true;
                 continue;
@@ -881,7 +1001,7 @@ async function monitorExistingPositions(
                     ...currentPosition,
                     tokenAddress: pair.baseToken.address,
                     amount: positionSize
-                }, currentPrice, runtime);
+                }, currentPrice, runtime, 'TRAILING_STOP');
                 continue;
             }
 
@@ -898,7 +1018,7 @@ async function monitorExistingPositions(
                     ...currentPosition,
                     tokenAddress: pair.baseToken.address,
                     amount: positionSize
-                }, currentPrice, runtime);
+                }, currentPrice, runtime, 'STOP_LOSS');
 
                 if (sellResult) {
                     elizaLogger.log(`Successfully sold ${currentPosition.token} at stop loss`);
@@ -979,11 +1099,13 @@ async function evaluateNewTrades(
 
             // Skip if liquidity too low
             if ((pair.liquidity?.usd || 0) < SAFETY_LIMITS.MIN_LIQUIDITY) {
+                elizaLogger.warn(`Skipping trade - low liquidity for ${pair.baseToken.symbol}: ${pair.liquidity?.usd || 0}`);
                 continue;
             }
 
             // Skip if volume too low
             if ((pair.volume?.h24 || 0) < SAFETY_LIMITS.MIN_VOLUME) {
+                elizaLogger.warn(`Skipping trade - low volume for ${pair.baseToken.symbol}: ${pair.volume?.h24 || 0}`);
                 continue;
             }
 
@@ -995,6 +1117,18 @@ async function evaluateNewTrades(
                 elizaLogger.warn(`Low trust score for ${pair.baseToken.symbol}: ${trustScore}`);
                 continue;
             }
+
+            // Add token analysis before trade
+            elizaLogger.log(`Analyzing token before trade...`);
+            const tokenAnalysis = await analyzeToken(runtime, pair.baseToken.address);
+            elizaLogger.log(`Token analysis for ${pair.baseToken.symbol}:`, tokenAnalysis);
+
+            elizaLogger.log(`Attempting to buy ${pair.baseToken.symbol}:`, {
+                positionSize,
+                price: pair.priceUsd,
+                trustScore,
+                tokenAnalysis
+            });
 
             // Execute buy trade
             const tradeResult = await executeTrade(runtime, {
@@ -1043,36 +1177,111 @@ async function evaluateNewTrades(
                     price: Number(pair.priceUsd),
                     signature: tradeResult.signature
                 });
+            } else {
+                elizaLogger.warn(`Trade failed for ${pair.baseToken.symbol}:`, tradeResult);
             }
         } catch (error) {
-            elizaLogger.error(`Error evaluating trade for ${pair.baseToken?.symbol}:`, error);
+            elizaLogger.error(`Error evaluating trade for ${pair.baseToken?.symbol}:`, {
+                error: error instanceof Error ? error.message : error,
+                stack: error instanceof Error ? error.stack : undefined
+            });
         }
     }
 }
 
-// Add position persistence
-async function loadPositions(runtime: IAgentRuntime): Promise<void> {
-    try {
-        const savedPositions = await runtime.cacheManager.get<Array<[string, Position]>>("trading_positions");
-        elizaLogger.log("Loading saved positions:", savedPositions);
+interface TokenData extends ProcessedTokenData {
+    tokenSecurityData: {
+        ownerBalance: string;
+        creatorBalance: string;
+        ownerPercentage: number;
+        top10HolderPercent: number;
+    };
+    tradeData: {
+        unique_wallet_30m: number;
+        unique_wallet_history_30m: number;
+        unique_wallet_30m_change_percent: number;
+        unique_wallet_1h: number;
+        unique_wallet_history_1h: number;
+        unique_wallet_1h_change_percent: number;
+        unique_wallet_24h: number;
+        unique_wallet_history_24h: number;
+        unique_wallet_24h_change_percent: number;
+    };
+}
 
-        if (savedPositions) {
-            positions.clear();
-            for (const [key, position] of savedPositions) {
-                positions.set(key, position);
+interface TokenAnalysis {
+    security: {
+        ownerBalance: string;
+        creatorBalance: string;
+        ownerPercentage: number;
+        top10HolderPercent: number;
+    };
+    trading: {
+        price: number;
+        priceChange24h: number;
+        volume24h: number;
+        uniqueWallets24h: number;
+        walletChanges: {
+            unique_wallet_30m_change_percent: number;
+            unique_wallet_1h_change_percent: number;
+            unique_wallet_24h_change_percent: number;
+        };
+    };
+    market: {
+        liquidity: number;
+        marketCap: number;
+        fdv: number;
+    };
+}
+
+async function analyzeToken(runtime: IAgentRuntime, tokenAddress: string): Promise<TokenAnalysis | null> {
+    try {
+        const tokenProvider = new TokenProvider(tokenAddress, null, runtime.cacheManager);
+
+        // Get processed data with error handling
+        const processedData = await tokenProvider.getProcessedTokenData().catch(() => ({
+            tokenSecurityData: {
+                ownerBalance: '0',
+                creatorBalance: '0',
+                ownerPercentage: 0,
+                top10HolderPercent: 0
+            },
+            tradeData: null,
+            dexScreenerData: { pairs: [] }
+        } as TokenData));
+
+        // Use DexScreener data for analysis since trade data might be null
+        const dexPair = processedData?.dexScreenerData?.pairs?.[0];
+
+        const analysis = {
+            security: {
+                ownerBalance: processedData?.tokenSecurityData?.ownerBalance || '0',
+                creatorBalance: processedData?.tokenSecurityData?.creatorBalance || '0',
+                ownerPercentage: processedData?.tokenSecurityData?.ownerPercentage || 0,
+                top10HolderPercent: processedData?.tokenSecurityData?.top10HolderPercent || 0
+            },
+            trading: {
+                price: dexPair?.priceUsd || 0,
+                priceChange24h: dexPair?.priceChange?.h24 || 0,
+                volume24h: dexPair?.volume?.h24 || 0,
+                uniqueWallets24h: processedData?.tradeData?.unique_wallet_24h || 0,
+                walletChanges: {
+                    unique_wallet_30m_change_percent: 0,
+                    unique_wallet_1h_change_percent: 0,
+                    unique_wallet_24h_change_percent: 0
+                }
+            },
+            market: {
+                liquidity: dexPair?.liquidity?.usd || 0,
+                marketCap: dexPair?.marketCap || 0,
+                fdv: dexPair?.fdv || 0
             }
-        }
-    } catch (error) {
-        elizaLogger.error("Error loading positions:", error);
-    }
-}
+        };
 
-async function savePositions(runtime: IAgentRuntime): Promise<void> {
-    try {
-        const positionsArray = Array.from(positions.entries());
-        await runtime.cacheManager.set("trading_positions", positionsArray);
-        elizaLogger.log("Positions saved:", positionsArray);
+        elizaLogger.log(`Token Analysis for ${tokenAddress}:`, analysis);
+        return analysis;
     } catch (error) {
-        elizaLogger.error("Error saving positions:", error);
+        elizaLogger.error(`Failed to analyze token ${tokenAddress}:`, error);
+        return null;
     }
 }
