@@ -138,6 +138,9 @@ importers:
       '@ai16z/plugin-aptos':
         specifier: workspace:*
         version: link:../packages/plugin-aptos
+      '@ai16z/plugin-birdeye':
+        specifier: workspace:*
+        version: link:../packages/plugin-birdeye
       '@ai16z/plugin-bootstrap':
         specifier: workspace:*
         version: link:../packages/plugin-bootstrap
