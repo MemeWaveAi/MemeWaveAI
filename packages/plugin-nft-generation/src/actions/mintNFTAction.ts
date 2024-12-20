@@ -4,13 +4,11 @@ import {
     Content,
     elizaLogger,
     generateObjectDeprecated,
-    getEmbeddingZeroVector,
     HandlerCallback,
     IAgentRuntime,
     Memory,
     ModelClass,
     State,
-    stringToUuid,
 } from "@ai16z/eliza";
 import { createNFT } from "../handlers/createNFT.ts";
 import { verifyNFT } from "../handlers/verifyNFT.ts";
@@ -34,8 +32,7 @@ Given the recent messages, extract the following information about the requested
 
 Respond with a JSON markdown block containing only the extracted values.
 
-Note: Make sure to extract the collection address from the most recent messages whenever possible.`
-
+Note: Make sure to extract the collection address from the most recent messages whenever possible.`;
 
 export interface MintContent extends Content {
     collectionAddress: string;
@@ -86,24 +83,6 @@ const mintNFTAction: Action = {
     ) => {
         try {
             elizaLogger.log("Composing state for message:", message);
-            const userId = runtime.agentId;
-            const agentName = runtime.character.name;
-            const roomId = stringToUuid("nft_generate_room-" + agentName);
-
-            // const memory: Memory = {
-            //     agentId: userId,
-            //     userId,
-            //     roomId,
-            //     content: {
-            //         text: message.content.text,
-            //         source: "nft-generator",
-            //     },
-            //     createdAt: Date.now(),
-            //     embedding: getEmbeddingZeroVector(),
-            // };
-            // const state = await runtime.composeState(memory, {
-            //     message: message.content.text,
-            // });
             if (!state) {
                 state = (await runtime.composeState(message)) as State;
             } else {
