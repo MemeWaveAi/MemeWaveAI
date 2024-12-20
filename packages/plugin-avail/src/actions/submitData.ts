@@ -114,9 +114,9 @@ export default {
         //     }
         //     return false;
         // }
-
+        if(content.data != null){
         try {
-
+            
             const SEED = runtime.getSetting("AVAIL_SEED")!;
             const ACCOUNT = runtime.getSetting("AVAIL_ADDRESS")!;
             const ENDPOINT= runtime.getSetting("AVAIL_RPC_URL")
@@ -149,7 +149,6 @@ export default {
             // Rejected Transaction handling
             if (txResult.isError) {
                 console.log(`Transaction was not executed`)
-                process.exit(1)
               }
 
             // Failed Transaction handling
@@ -162,7 +161,6 @@ export default {
             } else {
                 console.log(error.toString())
             }
-                process.exit(1)
             }
 
     
@@ -187,7 +185,10 @@ export default {
                 });
             }
             return false;
-        }            
+        } 
+        } else {
+            elizaLogger.log("No data mentioned to be submitted");
+        }           
     },
 
     examples: [

@@ -121,6 +121,7 @@ export default {
             return false;
         }
 
+        if(content.amount != null && content.recipient != null){
         try {
 
             const SEED = runtime.getSetting("AVAIL_SEED")!;
@@ -186,6 +187,9 @@ export default {
                 });
             }
             return false;
+        }
+        } else {
+            elizaLogger.log("Either amount or recipient not specified")
         }            
     },
 
