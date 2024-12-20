@@ -187,7 +187,17 @@ export const birdeyeProvider: Provider = {
         try {
             const provider = new BirdeyeProvider(runtime.cacheManager);
 
-            return '';
+            const walletAddr = runtime.getSetting('BIRDEYE_WALLET_ADDR')
+
+            if(!walletAddr) {
+                console.warn('No Birdeye wallet was specified')
+
+                return `Birdeye provider initiated with no wallet found`
+            }
+
+            const portfolio = await provider.fetchWalletPortfolio(walletAddr)
+
+            return `Birdeye wallet addr: ${walletAddr}, portfolio: ${portfolio}`;
         } catch (error) {
             console.error("Error fetching token data:", error);
             return "Unable to fetch token information. Please try again later.";
