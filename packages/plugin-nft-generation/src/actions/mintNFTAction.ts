@@ -27,12 +27,15 @@ Example response:
 }
 \`\`\`
 
-{{message}}
+{{recentMessages}}
 
 Given the recent messages, extract the following information about the requested mint nft:
 - collection contract address
 
-Respond with a JSON markdown block containing only the extracted values.`;
+Respond with a JSON markdown block containing only the extracted values.
+
+Note: Make sure to extract the collection address from the most recent messages whenever possible.`
+
 
 export interface MintContent extends Content {
     collectionAddress: string;
@@ -87,22 +90,25 @@ const mintNFTAction: Action = {
             const agentName = runtime.character.name;
             const roomId = stringToUuid("nft_generate_room-" + agentName);
 
-            const memory: Memory = {
-                agentId: userId,
-                userId,
-                roomId,
-                content: {
-                    text: message.content.text,
-                    source: "nft-generator",
-                },
-                createdAt: Date.now(),
-                embedding: getEmbeddingZeroVector(),
-            };
-            const state = await runtime.composeState(memory, {
-                message: message.content.text,
-            });
-
-            elizaLogger.log("state:", state);
+            // const memory: Memory = {
+            //     agentId: userId,
+            //     userId,
+            //     roomId,
+            //     content: {
+            //         text: message.content.text,
+            //         source: "nft-generator",
+            //     },
+            //     createdAt: Date.now(),
+            //     embedding: getEmbeddingZeroVector(),
+            // };
+            // const state = await runtime.composeState(memory, {
+            //     message: message.content.text,
+            // });
+            if (!state) {
+                state = (await runtime.composeState(message)) as State;
+            } else {
+                state = await runtime.updateRecentMessageState(state);
+            }
 
             // Compose transfer context
             const transferContext = composeContext({
@@ -189,34 +195,6 @@ const mintNFTAction: Action = {
                 });
                 return false;
             }
-
-            //
-            // const userId = runtime.agentId;
-            // elizaLogger.log("User ID:", userId);
-            //
-            // const collectionAddressRes = await createCollection({
-            //     runtime,
-            //     collectionName: runtime.character.name,
-            // });
-            //
-            // const collectionInfo = collectionAddressRes.collectionInfo;
-            //
-            // elizaLogger.log("Collection Address:", collectionAddressRes);
-
-            //
-            // elizaLogger.log("NFT Address:", nftRes);
-            //
-            //
-            // callback({
-            //     text: `Congratulations to you! 🎉🎉🎉 \nCollection : ${collectionAddressRes.link}\n NFT: ${nftRes.link}`, //caption.description,
-            //     attachments: [],
-            // });
-            // await sleep(15000);
-            // await verifyNFT({
-            //     runtime,
-            //     collectionAddress: collectionAddressRes.address,
-            //     NFTAddress: nftRes.address,
-            // });
             return [];
         } catch (e: any) {
             console.log(e);
