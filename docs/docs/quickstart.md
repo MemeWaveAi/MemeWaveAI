@@ -171,6 +171,8 @@ TWITTER_EMAIL=    # Account email
 TWITTER_COOKIES=  # Account cookies (auth_token and CT0)
 ```
 
+**Important:** Log in to the [Twitter Developer Portal](https://developer.twitter.com) and enable the "Automated" label for your account to avoid being flagged as inauthentic.
+
 Example for TWITTER_COOKIES
 
 The TWITTER_COOKIES variable should be a JSON string containing the necessary cookies. You can find these cookies in your web browser's developer tools. Here is an example format:

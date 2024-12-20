@@ -210,8 +210,11 @@ export async function loadCharacters(
 export function getTokenForProvider(
     provider: ModelProviderName,
     character: Character
-) {
+):string {
     switch (provider) {
+        // no key needed for llama_local
+        case ModelProviderName.LLAMALOCAL:
+            return ''
         case ModelProviderName.OPENAI:
             return (
                 character.settings?.secrets?.OPENAI_API_KEY ||
@@ -234,6 +237,7 @@ export function getTokenForProvider(
                 character.settings?.secrets?.OPENAI_API_KEY ||
                 settings.OPENAI_API_KEY
             );
+        case ModelProviderName.CLAUDE_VERTEX:
         case ModelProviderName.ANTHROPIC:
             return (
                 character.settings?.secrets?.ANTHROPIC_API_KEY ||
@@ -578,7 +582,7 @@ function initializeDbCache(character: Character, db: IDatabaseCacheAdapter) {
 
 async function startAgent(
     character: Character,
-    directClient
+    directClient: DirectClient
 ): Promise<AgentRuntime> {
     let db: IDatabaseAdapter & IDatabaseCacheAdapter;
     try {
@@ -653,7 +657,7 @@ const startAgents = async () => {
     }
 
     // upload some agent functionality into directClient
-    directClient.startAgent = async (character) => {
+    directClient.startAgent = async (character: Character) => {
         // wrap it so we don't have to inject directClient later
         return startAgent(character, directClient);
     };

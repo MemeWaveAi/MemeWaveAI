@@ -1215,6 +1215,10 @@ export const generateWebSearch = async (
                 api_key: apiKey,
                 query,
                 include_answer: true,
+                max_results: 3, // 5 (default)
+                topic: "general", // "general"(default) "news"
+                search_depth: "basic", // "basic"(default) "advanced"
+                include_images: false, // false (default) true
             }),
         });
 
