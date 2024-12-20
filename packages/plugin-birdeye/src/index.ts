@@ -1,6 +1,6 @@
 import { Plugin } from "@ai16z/eliza";
 
-import {birdeyeProvider, BirdeyeProvider} from './providers/birdeye'
+import { birdeyeProvider, BirdeyeProvider } from "./providers/birdeye";
 
 export { BirdeyeProvider };
 

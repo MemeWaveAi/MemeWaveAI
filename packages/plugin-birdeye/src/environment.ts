@@ -15,6 +15,9 @@ export async function validateBirdeyeConfig(
             BIRDEYE_API_KEY:
                 runtime.getSetting("BIRDEYE_API_KEY") ||
                 process.env.BIRDEYE_API_KEY,
+            BIRDEYE_WALLET_ADDR:
+                runtime.getSetting("BIRDEYE_WALLET_ADDR") ||
+                process.env.BIRDEYE_WALLET_ADDR,
         };
 
         return birdeyeEnvSchema.parse(config);

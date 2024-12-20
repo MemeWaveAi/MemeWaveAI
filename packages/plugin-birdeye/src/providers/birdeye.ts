@@ -1,29 +1,28 @@
-
 import NodeCache from "node-cache";
 import * as path from "path";
 import { ICacheManager, settings } from "@ai16z/eliza";
 import { IAgentRuntime, Memory, Provider, State } from "@ai16z/eliza";
 
-const DEFAULT_MAX_RETRIES = 3
+const DEFAULT_MAX_RETRIES = 3;
 
 const DEFAULT_SUPPORTED_SYMBOLS = {
     SOL: "So11111111111111111111111111111111111111112",
     BTC: "qfnqNqs3nCAHjnyCgLRDbBtq4p2MtHZxw8YjSyYhPoL",
     ETH: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
     Example: "2weMjPLLybRMMva1fM3U31goWWrCpF59CHWNhnCJ9Vyh",
-}
+};
 
-const API_BASE_URL = 'https://public-api.birdeye.so'
+const API_BASE_URL = "https://public-api.birdeye.so";
 const ENDPOINT_MAP = {
-    price: '/defi/price?address=',
-    security: '/defi/token_security?address=',
-    volume: '/defi/v3/token/trade-data/single?address=',
-    portfolio: '/v1/wallet/token_list?wallet='
-}
-const RETRY_DELAY_MS = 2_000
+    price: "/defi/price?address=",
+    security: "/defi/token_security?address=",
+    volume: "/defi/v3/token/trade-data/single?address=",
+    portfolio: "/v1/wallet/token_list?wallet=",
+};
+const RETRY_DELAY_MS = 2_000;
 
-const waitFor = (ms:number) => new Promise((resolve)=> setTimeout(resolve, ms))
-
+const waitFor = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
 class BaseCachedProvider {
     private cache: NodeCache;
@@ -37,9 +36,7 @@ class BaseCachedProvider {
     }
 
     private readFsCache<T>(key: string): Promise<T | null> {
-        return this.cacheManager.get<T>(
-            path.join(this.cacheKey, key)
-        );
+        return this.cacheManager.get<T>(path.join(this.cacheKey, key));
     }
 
     private writeFsCache<T>(key: string, data: T): Promise<void> {
@@ -52,13 +49,13 @@ class BaseCachedProvider {
         // get memory cache first
         const val = this.cache.get<T>(key);
         if (val) {
-            return val
+            return val;
         }
 
-        const fsVal = await this.readFsCache<T>(key)
-        if(fsVal) {
+        const fsVal = await this.readFsCache<T>(key);
+        if (fsVal) {
             // set to memory cache
-            this.cache.set(key, fsVal)
+            this.cache.set(key, fsVal);
         }
 
         return fsVal;
@@ -74,47 +71,47 @@ class BaseCachedProvider {
 }
 
 export class BirdeyeProvider extends BaseCachedProvider {
-    private symbolMap: Record<string, string>
-    private maxRetries: number
+    private symbolMap: Record<string, string>;
+    private maxRetries: number;
 
     constructor(
         cacheManager: ICacheManager,
         symbolMap?: Record<string, string>,
         maxRetries?: number
     ) {
-        super(cacheManager, "birdeye/data")
-        this.symbolMap = symbolMap || DEFAULT_SUPPORTED_SYMBOLS
-        this.maxRetries = maxRetries || DEFAULT_MAX_RETRIES
+        super(cacheManager, "birdeye/data");
+        this.symbolMap = symbolMap || DEFAULT_SUPPORTED_SYMBOLS;
+        this.maxRetries = maxRetries || DEFAULT_MAX_RETRIES;
     }
 
     private getTokenAddress(symbol: string) {
-        const addr = this.symbolMap[symbol]
+        const addr = this.symbolMap[symbol];
 
-        if(!addr) {
-            throw new Error(`Unsupported symbol ${symbol} in Birdeye provider`)
+        if (!addr) {
+            throw new Error(`Unsupported symbol ${symbol} in Birdeye provider`);
         }
 
-        return addr
+        return addr;
     }
 
     private getUrlByType(type: string, address: string) {
-        const path = ENDPOINT_MAP[type]
+        const path = ENDPOINT_MAP[type];
 
-        if(!path) {
-            throw new Error(`Unsupported symbol ${type} in Birdeye provider`)
+        if (!path) {
+            throw new Error(`Unsupported symbol ${type} in Birdeye provider`);
         }
 
-        return `${API_BASE_URL}${path}${address}`
+        return `${API_BASE_URL}${path}${address}`;
     }
 
     private async fetchWithRetry(
         url: string,
         options: RequestInit = {}
     ): Promise<any> {
-        let attempts = 0
+        let attempts = 0;
 
-        while(attempts < this.maxRetries) {
-            attempts ++
+        while (attempts < this.maxRetries) {
+            attempts++;
             try {
                 const resp = await fetch(url, {
                     ...options,
@@ -122,11 +119,11 @@ export class BirdeyeProvider extends BaseCachedProvider {
                         Accept: "application/json",
                         "x-chain": settings.BIRDEYE_CHAIN || "solana",
                         "X-API-KEY": settings.BIRDEYE_API_KEY || "",
-                        ...options.headers
-                    }
-                })
+                        ...options.headers,
+                    },
+                });
 
-                if(!resp.ok) {
+                if (!resp.ok) {
                     const errorText = await resp.text();
                     throw new Error(
                         `HTTP error! status: ${resp.status}, message: ${errorText}`
@@ -135,45 +132,43 @@ export class BirdeyeProvider extends BaseCachedProvider {
 
                 const data = await resp.json();
                 return data;
-
-            } catch(error) {
-                if(attempts === this.maxRetries) {
+            } catch (error) {
+                if (attempts === this.maxRetries) {
                     // failed after all
-                    throw error
+                    throw error;
                 }
-                await waitFor(RETRY_DELAY_MS)
+                await waitFor(RETRY_DELAY_MS);
             }
-
         }
     }
 
     public async fetchPriceBySymbol(symbol: string) {
-        return this.fetchPriceByAddress(this.getTokenAddress(symbol))
+        return this.fetchPriceByAddress(this.getTokenAddress(symbol));
     }
     public async fetchPriceByAddress(address: string) {
-        const url = this.getUrlByType('price', address)
-        return this.fetchWithRetry(url)
+        const url = this.getUrlByType("price", address);
+        return this.fetchWithRetry(url);
     }
 
     public async fetchTokenSecurityBySymbol(symbol: string) {
-        return this.fetchTokenSecurityByAddress(this.getTokenAddress(symbol))
+        return this.fetchTokenSecurityByAddress(this.getTokenAddress(symbol));
     }
     public async fetchTokenSecurityByAddress(address: string) {
-        const url = this.getUrlByType('security', address)
-        return this.fetchWithRetry(url)
+        const url = this.getUrlByType("security", address);
+        return this.fetchWithRetry(url);
     }
 
-    public async fetchTokenTradeDataBySymbol(symbol:string) {
-        return this.fetchTokenTradeDataByAddress(this.getTokenAddress(symbol))
+    public async fetchTokenTradeDataBySymbol(symbol: string) {
+        return this.fetchTokenTradeDataByAddress(this.getTokenAddress(symbol));
     }
-    public async fetchTokenTradeDataByAddress(address:string) {
-        const url = this.getUrlByType('volume', address)
-        return this.fetchWithRetry(url)
+    public async fetchTokenTradeDataByAddress(address: string) {
+        const url = this.getUrlByType("volume", address);
+        return this.fetchWithRetry(url);
     }
 
     public async fetchWalletPortfolio(address: string) {
-        const url = this.getUrlByType('portfolio', address)
-        return this.fetchWithRetry(url)
+        const url = this.getUrlByType("portfolio", address);
+        return this.fetchWithRetry(url);
     }
 }
 
@@ -186,15 +181,15 @@ export const birdeyeProvider: Provider = {
         try {
             const provider = new BirdeyeProvider(runtime.cacheManager);
 
-            const walletAddr = runtime.getSetting('BIRDEYE_WALLET_ADDR')
+            const walletAddr = runtime.getSetting("BIRDEYE_WALLET_ADDR");
 
-            if(!walletAddr) {
-                console.warn('No Birdeye wallet was specified')
+            if (!walletAddr) {
+                console.warn("No Birdeye wallet was specified");
 
-                return `Birdeye provider initiated with no wallet found`
+                return `Birdeye provider initiated with no wallet found`;
             }
 
-            const portfolio = await provider.fetchWalletPortfolio(walletAddr)
+            const portfolio = await provider.fetchWalletPortfolio(walletAddr);
 
             return `Birdeye wallet addr: ${walletAddr}, portfolio: ${portfolio}`;
         } catch (error) {
@@ -202,4 +197,4 @@ export const birdeyeProvider: Provider = {
             return "Unable to fetch token information. Please try again later.";
         }
     },
-}
+};
