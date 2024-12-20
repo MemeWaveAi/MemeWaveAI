@@ -142,33 +142,47 @@ export class BirdeyeProvider extends BaseCachedProvider {
         }
     }
 
+    private async fetchWithCacheAndRetry(
+        type: string,
+        address: string
+    ): Promise<any> {
+        const key = `${type}/${address}`
+        const val = await this.readFromCache(key)
+
+        if (val) {
+            return val
+        }
+
+        const url = this.getUrlByType(type, address);
+        const data = await this.fetchWithRetry(url);
+
+        await this.writeToCache(key, data)
+        return data
+    }
+
     public async fetchPriceBySymbol(symbol: string) {
         return this.fetchPriceByAddress(this.getTokenAddress(symbol));
     }
     public async fetchPriceByAddress(address: string) {
-        const url = this.getUrlByType("price", address);
-        return this.fetchWithRetry(url);
+        return this.fetchWithCacheAndRetry("price", address);
     }
 
     public async fetchTokenSecurityBySymbol(symbol: string) {
         return this.fetchTokenSecurityByAddress(this.getTokenAddress(symbol));
     }
     public async fetchTokenSecurityByAddress(address: string) {
-        const url = this.getUrlByType("security", address);
-        return this.fetchWithRetry(url);
+        return this.fetchWithCacheAndRetry("security", address);
     }
 
     public async fetchTokenTradeDataBySymbol(symbol: string) {
         return this.fetchTokenTradeDataByAddress(this.getTokenAddress(symbol));
     }
     public async fetchTokenTradeDataByAddress(address: string) {
-        const url = this.getUrlByType("volume", address);
-        return this.fetchWithRetry(url);
+        return this.fetchWithCacheAndRetry("volume", address);
     }
 
     public async fetchWalletPortfolio(address: string) {
-        const url = this.getUrlByType("portfolio", address);
-        return this.fetchWithRetry(url);
+        return this.fetchWithCacheAndRetry("portfolio", address);
     }
 }
 

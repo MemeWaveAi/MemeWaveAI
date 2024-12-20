@@ -4,8 +4,6 @@ import { BirdeyeProvider } from "../providers/birdeye";
 
 import { describe, it, expect, beforeEach, afterEach, vi, Mock } from "vitest";
 
-// Mock fetch implementation
-global.fetch = vi.fn();
 
 describe("BirdeyeProvider", () => {
     describe("basic fetching", () => {
@@ -18,6 +16,7 @@ describe("BirdeyeProvider", () => {
                 set: vi.fn(),
             } as unknown as ICacheManager;
             provider = new BirdeyeProvider(cacheManager);
+            global.fetch = vi.fn();
         });
 
         afterEach(() => {
@@ -101,6 +100,7 @@ describe("BirdeyeProvider", () => {
                 set: vi.fn(),
             } as unknown as ICacheManager;
             provider = new BirdeyeProvider(cacheManager);
+            global.fetch = vi.fn();
         });
 
         afterEach(() => {
@@ -149,6 +149,7 @@ describe("BirdeyeProvider", () => {
             provider = new BirdeyeProvider(cacheManager, {
                 WETH: "0x32323232323232",
             });
+            global.fetch = vi.fn();
         });
 
         it("should fetch price for a custom symbol WETH", async () => {
@@ -200,7 +201,7 @@ describe("BirdeyeProvider", () => {
         });
     });
 
-    describe.only("with cache", () => {
+    describe("with cache", () => {
         let cacheManager: ICacheManager;
         let provider: BirdeyeProvider;
         let nodeCache: NodeCache;
@@ -214,6 +215,7 @@ describe("BirdeyeProvider", () => {
 
             provider = new BirdeyeProvider(cacheManager);
             provider["cache"] = nodeCache; // Directly set the node cache
+            global.fetch = vi.fn();
         });
 
         afterEach(() => {
@@ -224,7 +226,7 @@ describe("BirdeyeProvider", () => {
         it("should use memory cache when fetching price by symbol", async () => {
             const mockResponse = { price: 100 };
             nodeCache.set(
-                "So11111111111111111111111111111111111111112",
+                "price/So11111111111111111111111111111111111111112",
                 mockResponse
             ); // Pre-fill cache
 
@@ -276,7 +278,7 @@ describe("BirdeyeProvider", () => {
             expect(fetch).toHaveBeenCalledTimes(1);
             expect(cacheManager.set).toHaveBeenCalledWith(
                 expect.stringContaining(
-                    "birdeye/data/So11111111111111111111111111111111111111112"
+                    "birdeye/data/price/So11111111111111111111111111111111111111112"
                 ),
                 mockResponse,
                 expect.any(Object)
