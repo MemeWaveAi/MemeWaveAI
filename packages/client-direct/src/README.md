@@ -43,3 +43,42 @@ curl -X GET "http://localhost:3000/fine-tune/8566c47a-ada8-441c-95bc-7bb07656c4c
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer jvBpxrTNqGqhnfQhSEqCdsG6aTSP8IBL".
 ```
+
+
+## Verifiable Attestations
+Configuration variables in .env
+
+```shell
+TEE_MODE="DOCKER"                    # LOCAL | DOCKER | PRODUCTION
+WALLET_SECRET_SALT= "dfafdafda"            # ONLY define if you want to use TEE Plugin, otherwise it will throw errors
+VLOG="true"
+```
+
+### verifiable agents
+```shell
+curl -X GET --location "http://localhost:3000/verifiable/agents"
+```
+
+### Query logs
+```shell
+curl -X POST --location "http://localhost:3000/verifiable/logs" \
+    -H "Content-Type: application/json" \
+    -d '{
+          "query": {
+            "contLike": "Twinkletwinkle"
+          },
+          "page": 1,
+          "pageSize": 10
+        }'
+```
+
+# Get attestation
+```shell
+curl -X POST --location "http://localhost:3000/verifiable/attestation" \
+    -H "Content-Type: application/json" \
+    -d '{
+          "agentId": "9c321604-e69e-0e4c-ab84-bec6fd6baf92",
+          "publicKey": "0x045b51a28c3b071104f3094b1934343eb831b8d56f16fc6e9a3304e9f051b24e584d806b20769b05eeade3a6c792db96f57b26cc38037907dd920e9be9f41f6184"
+        }'
+
+```
