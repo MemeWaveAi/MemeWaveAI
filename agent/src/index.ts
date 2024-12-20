@@ -550,8 +550,9 @@ export async function createAgent(
             getSecret(character, "TON_PRIVATE_KEY") ? tonPlugin : null,
             getSecret(character, "SUI_PRIVATE_KEY") ? suiPlugin : null,
             getSecret(character, "STORY_PRIVATE_KEY") ? storyPlugin : null,
-            getSecret(character, "AVAIL_SEED") ? availPlugin : null,
+            getSecret(character, "AVAIL_SEED") && 
             getSecret(character, "AVAIL_APP_ID") ? availPlugin : null,
+
         ].filter(Boolean),
         providers: [],
         actions: [],
