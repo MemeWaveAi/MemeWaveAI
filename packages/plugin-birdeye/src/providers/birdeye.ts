@@ -147,7 +147,6 @@ export class BirdeyeProvider extends BaseCachedProvider {
         }
     }
 
-
     public async fetchPriceBySymbol(symbol: string) {
         return this.fetchPriceByAddress(this.getTokenAddress(symbol))
     }
