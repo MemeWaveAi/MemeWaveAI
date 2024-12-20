@@ -7,13 +7,13 @@ import { LensAgentClient } from "@ai16z/client-lens";
 import { SlackClientInterface } from "@ai16z/client-slack";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
+import { defaultCharacter } from "./default";
 import {
     AgentRuntime,
     CacheManager,
     Character,
     Clients,
     DbCacheAdapter,
-    defaultCharacter,
     elizaLogger,
     FsCacheAdapter,
     IAgentRuntime,
@@ -648,9 +648,9 @@ const startAgents = async () => {
     }
 
     // upload some agent functionality into directClient
-    directClient.startAgent = async character => {
-      // wrap it so we don't have to inject directClient later
-      return startAgent(character, directClient)
+    directClient.startAgent = async (character) => {
+        // wrap it so we don't have to inject directClient later
+        return startAgent(character, directClient);
     };
     directClient.start(serverPort);
 
