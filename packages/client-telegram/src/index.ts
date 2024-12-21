@@ -19,6 +19,27 @@ export const TelegramClientInterface: Client = {
         );
         return tg;
     },
+    validate: async (token) => {
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+        if (!response.ok) {
+            elizaLogger.error('Invalid telegram token:', response.statusText);
+            return false;
+        }
+        const data = await response.json();
+        elizaLogger.log('data', data)
+        if (data["ok"]) {
+            return true;
+        } else {
+            elizaLogger.error('Invalid telegram token:', data["description"]);
+            return false;
+        }
+      } catch (error) {
+          // maybe don't log error.message as it may have secret in it
+          elizaLogger.error('Error verifying telegram token:', error.message);
+          return false;
+      }
+    },
     stop: async (_runtime: IAgentRuntime) => {
         elizaLogger.warn("Telegram client does not support stopping yet");
     },

@@ -1,5 +1,5 @@
 import { Client, elizaLogger, IAgentRuntime } from "@ai16z/eliza";
-import { ClientBase } from "./base.ts";
+import { ClientBase, getScrapper } from "./base.ts";
 import { validateTwitterConfig } from "./environment.ts";
 import { TwitterInteractionClient } from "./interactions.ts";
 import { TwitterPostClient } from "./post.ts";
@@ -45,6 +45,22 @@ export const TwitterClientInterface: Client = {
         await manager.search?.start();
 
         return manager;
+    },
+    validate: async (secrets) => {
+      try {
+          const twClient = getScrapper(secrets.username);
+          // try logging in
+          await twClient.login(
+              secrets.username,
+              secrets.password,
+              secrets.email,
+              secrets.twitter2faSecret
+          );
+          return twClient.isLoggedIn()
+      } catch (error) {
+          elizaLogger.error('Error validating twitter login:', error);
+          return false;
+      }
     },
     async stop(_runtime: IAgentRuntime) {
         elizaLogger.warn("Twitter client does not support stopping yet");

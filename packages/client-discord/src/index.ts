@@ -64,9 +64,14 @@ export class DiscordClient extends EventEmitter {
         this.messageManager = new MessageManager(this, this.voiceManager);
 
         this.client.once(Events.ClientReady, this.onClientReady.bind(this));
-        this.client.login(this.apiToken);
-
-        this.setupEventListeners();
+        this.client.login(this.apiToken).catch(e => {
+          elizaLogger.error('Discord connection - error', e);
+          if (e.code === 'TOKEN_INVALID') {
+          }
+        }).then(() => {
+          elizaLogger.log(`Discord for ${runtime.character.name} connected`)
+          this.setupEventListeners();
+        })
 
         this.runtime.registerAction(joinvoice);
         this.runtime.registerAction(leavevoice);
@@ -396,12 +401,33 @@ export class DiscordClient extends EventEmitter {
     }
 }
 
+/*
 export function startDiscord(runtime: IAgentRuntime) {
     return new DiscordClient(runtime);
 }
+*/
 
 export const DiscordClientInterface: ElizaClient = {
     start: async (runtime: IAgentRuntime) => new DiscordClient(runtime),
+    validate: async (token) => {
+      try {
+          const response = await fetch('https://discord.com/api/v10/users/@me', {
+              headers: {
+                  Authorization: `Bot ${token}`
+              }
+          });
+
+          if (response.ok) {
+              return true;
+          } else {
+              elizaLogger.error(`Invalid discord token: ${response.status} ${response.statusText}`);
+              return false;
+          }
+      } catch (error) {
+          elizaLogger.error('Error validating discord token:', error);
+          return false;
+      }
+    },
     stop: async (runtime: IAgentRuntime) => {
         try {
           // stop it
