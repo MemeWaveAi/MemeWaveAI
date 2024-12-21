@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ModelProviderName, IAgentRuntime } from "../types";
-import { models } from "../models";
+import { getModelProviderData } from "../models";
 import {
     generateText,
     generateTrueOrFalse,
@@ -15,6 +15,7 @@ vi.mock("../index.ts", () => ({
         log: vi.fn(),
         info: vi.fn(),
         error: vi.fn(),
+        debug: vi.fn(),
     },
 }));
 
@@ -76,9 +77,10 @@ describe("Generation", () => {
             expect(result).toBe("mocked response");
         });
 
-        it("should use correct model settings from provider config", () => {
+        it("should use correct model settings from provider config", async () => {
             const modelProvider = mockRuntime.modelProvider;
-            const modelSettings = models[modelProvider].settings;
+            console.log('modelProvider', modelProvider)
+            const modelSettings = (await getModelProviderData(modelProvider)).settings;
 
             expect(modelSettings).toBeDefined();
             expect(modelSettings.temperature).toBeDefined();
