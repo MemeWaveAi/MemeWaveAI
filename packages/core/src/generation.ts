@@ -950,14 +950,30 @@ export const generateImage = async (
     });
 
     const apiKey =
-        runtime.imageModelProvider === runtime.modelProvider
-            ? runtime.token
-            : (runtime.getSetting("HEURIST_API_KEY") ??
-              runtime.getSetting("TOGETHER_API_KEY") ??
-              runtime.getSetting("FAL_API_KEY") ??
-              runtime.getSetting("OPENAI_API_KEY") ??
-              runtime.getSetting("VENICE_API_KEY"));
-
+    runtime.imageModelProvider === runtime.modelProvider
+        ? runtime.token
+        : (() => {
+            // First try to match the specific provider
+            switch (runtime.imageModelProvider) {
+                case ModelProviderName.HEURIST:
+                    return runtime.getSetting("HEURIST_API_KEY");
+                case ModelProviderName.TOGETHER:
+                    return runtime.getSetting("TOGETHER_API_KEY");
+                case ModelProviderName.FAL:
+                    return runtime.getSetting("FAL_API_KEY");
+                case ModelProviderName.OPENAI:
+                    return runtime.getSetting("OPENAI_API_KEY");
+                case ModelProviderName.VENICE:
+                    return runtime.getSetting("VENICE_API_KEY");
+                default:
+                    // If no specific match, try the fallback chain
+                    return (runtime.getSetting("HEURIST_API_KEY") ??
+                           runtime.getSetting("TOGETHER_API_KEY") ??
+                           runtime.getSetting("FAL_API_KEY") ??
+                           runtime.getSetting("OPENAI_API_KEY") ??
+                           runtime.getSetting("VENICE_API_KEY"));
+            }
+        })();
     try {
         if (runtime.imageModelProvider === ModelProviderName.HEURIST) {
             const response = await fetch(
