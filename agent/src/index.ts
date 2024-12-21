@@ -31,6 +31,7 @@ import createGoatPlugin from "@ai16z/plugin-goat";
 // import { intifacePlugin } from "@ai16z/plugin-intiface";
 import { DirectClient } from "@ai16z/client-direct";
 import { aptosPlugin } from "@ai16z/plugin-aptos";
+import { bitcoinLightningNetworkPlugin } from "@ai16z/plugin-bitcoin-lightning-network";
 import {
     advancedTradePlugin,
     coinbaseCommercePlugin,
@@ -210,11 +211,11 @@ export async function loadCharacters(
 export function getTokenForProvider(
     provider: ModelProviderName,
     character: Character
-):string {
+): string {
     switch (provider) {
         // no key needed for llama_local
         case ModelProviderName.LLAMALOCAL:
-            return ''
+            return "";
         case ModelProviderName.OPENAI:
             return (
                 character.settings?.secrets?.OPENAI_API_KEY ||
@@ -310,9 +311,9 @@ export function getTokenForProvider(
                 settings.AKASH_CHAT_API_KEY
             );
         default:
-            const errorMessage = `Failed to get token - unsupported model provider: ${provider}`
-            elizaLogger.error(errorMessage)
-            throw new Error(errorMessage)
+            const errorMessage = `Failed to get token - unsupported model provider: ${provider}`;
+            elizaLogger.error(errorMessage);
+            throw new Error(errorMessage);
     }
 }
 
@@ -561,6 +562,9 @@ export async function createAgent(
             getSecret(character, "TON_PRIVATE_KEY") ? tonPlugin : null,
             getSecret(character, "SUI_PRIVATE_KEY") ? suiPlugin : null,
             getSecret(character, "STORY_PRIVATE_KEY") ? storyPlugin : null,
+            getSecret(character, "BITCOIN_LNBITS_NODE_URL")
+                ? bitcoinLightningNetworkPlugin
+                : null,
         ].filter(Boolean),
         providers: [],
         actions: [],

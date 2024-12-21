@@ -138,6 +138,9 @@ importers:
       '@ai16z/plugin-aptos':
         specifier: workspace:*
         version: link:../packages/plugin-aptos
+      '@ai16z/plugin-bitcoin-lightning-network':
+        specifier: workspace:*
+        version: link:../packages/plugin-bitcoin-lightning-network
       '@ai16z/plugin-bootstrap':
         specifier: workspace:*
         version: link:../packages/plugin-bootstrap
@@ -967,6 +970,18 @@ importers:
       whatwg-url:
         specifier: 7.1.0
         version: 7.1.0
+
+  packages/plugin-bitcoin-lightning-network:
+    dependencies:
+      '@ai16z/eliza':
+        specifier: workspace:*
+        version: link:../core
+      bolt11-decoder:
+        specifier: ^1.2.6
+        version: 1.2.6
+      tsup:
+        specifier: 8.3.5
+        version: 8.3.5(@swc/core@1.10.1(@swc/helpers@0.5.15))(jiti@2.4.1)(postcss@8.4.49)(typescript@5.6.3)(yaml@2.6.1)
 
   packages/plugin-bootstrap:
     dependencies:
@@ -8788,6 +8803,9 @@ packages:
   bip39@3.1.0:
     resolution: {integrity: sha512-c9kiwdk45Do5GL0vJMe7tS95VjCii65mYAH7DfWl3uW8AVzXKQVUm64i3hzVybBDMp9r7j9iNxR85+ul8MdN/A==}
 
+  bip66@1.1.5:
+    resolution: {integrity: sha512-nemMHz95EmS38a26XbbdxIYj5csHd3RMP3H5bwQknX0WYHF01qhpufP42mLOwVICuH2JmhIhXiWs89MfUGL7Xw==}
+
   bitcoinjs-lib@7.0.0-rc.0:
     resolution: {integrity: sha512-7CQgOIbREemKR/NT2uc3uO/fkEy+6CM0sLxboVVY6bv6DbZmPt3gg5Y/hhWgQFeZu5lfTbtVAv32MIxf7lMh4g==}
     engines: {node: '>=18.0.0'}
@@ -8824,6 +8842,9 @@ packages:
   body-parser@1.20.3:
     resolution: {integrity: sha512-7rAxByjUMqQ3/bHJy7D6OGXvx/MMc4IqBn/X0fcM1QUcAItpZrBEYhWGem+tzXH90c+G01ypMcYJBO9Y30203g==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
+
+  bolt11-decoder@1.2.6:
+    resolution: {integrity: sha512-drl3nAjBY0i3C/aS12ZRB4emOKQ2LpgfZLH+kRCAK+UXf6g9yNYt5qdjqvVXbqCb3jmIRYJ4kEq+R19+vS/Lmw==}
 
   bonjour-service@1.3.0:
     resolution: {integrity: sha512-3YuAUiSkWykd+2Azjgyxei8OWf8thdn8AITIog2M4UICzoqfjlqr64WIjEXZllf/W6vK1goqleSR6brGomxQqA==}
@@ -9373,6 +9394,9 @@ packages:
 
   coinbase-api@1.0.5:
     resolution: {integrity: sha512-5Rq6hYKnJNc9v4diD8M6PStSc2hwMgfOlB+pb1LSyh5q2xg9ZKi3Gu8ZVxaDnKXmgQgrjI4xJLMpc3fiLgzsew==}
+
+  coininfo@4.5.0:
+    resolution: {integrity: sha512-9YnPekCDaFSJl/yG27dEkCbHF09CO3Cz38A2TMcFZRMcaCy2l38B2nQK/rdz8zLqOLVzzE/e0MpcWMxvyEncGA==}
 
   collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
@@ -10504,6 +10528,10 @@ packages:
 
   doublearray@0.0.2:
     resolution: {integrity: sha512-aw55FtZzT6AmiamEj2kvmR6BuFqvYgKZUkfQ7teqVRNqD5UE0rw8IeW/3gieHNKQ5sPuDKlljWEn4bzv5+1bHw==}
+
+  drbg.js@1.0.1:
+    resolution: {integrity: sha512-F4wZ06PvqxYLFEZKkFxTDcns9oFNk34hvmJSEwdzsxVQ8YI5YaxtACgQatkYgv2VI2CFkUd2Y+xosPQnHv809g==}
+    engines: {node: '>=0.10'}
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -16637,6 +16665,10 @@ packages:
 
   search-insights@2.17.3:
     resolution: {integrity: sha512-RQPdCYTa8A68uM2jwxoY842xDhvx3E5LFL1LxvxCNMev4o5mLuokczhzjAgGwUZBAmOKZknArSxLKmXtIi2AxQ==}
+
+  secp256k1@3.8.1:
+    resolution: {integrity: sha512-tArjQw2P0RTdY7QmkNehgp6TVvQXq6ulIhxv8gaH6YubKG/wxxAoNKcbuXjDhybbc+b2Ihc7e0xxiGN744UIiQ==}
+    engines: {node: '>=4.0.0'}
 
   secp256k1@4.0.4:
     resolution: {integrity: sha512-6JfvwvjUOn8F/jUoBY2Q1v5WY5XS+rj8qSe0v8Y4ezH4InLgTEeOOPQsRll9OV429Pvo6BCHGavIyJfr3TAhsw==}
@@ -29308,6 +29340,10 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.6.1
 
+  bip66@1.1.5:
+    dependencies:
+      safe-buffer: 5.2.1
+
   bitcoinjs-lib@7.0.0-rc.0(typescript@5.6.3):
     dependencies:
       '@noble/hashes': 1.6.1
@@ -29363,6 +29399,18 @@ snapshots:
       unpipe: 1.0.0
     transitivePeerDependencies:
       - supports-color
+
+  bolt11-decoder@1.2.6:
+    dependencies:
+      '@types/bn.js': 4.11.6
+      bech32: 1.1.4
+      bn.js: 4.12.1
+      bs58check: 2.1.2
+      coininfo: 4.5.0
+      lodash: 4.17.21
+      safe-buffer: 5.2.1
+      secp256k1: 3.8.1
+      typeforce: 1.18.0
 
   bonjour-service@1.3.0:
     dependencies:
@@ -30108,6 +30156,10 @@ snapshots:
       - bufferutil
       - debug
       - utf-8-validate
+
+  coininfo@4.5.0:
+    dependencies:
+      safe-buffer: 5.2.1
 
   collapse-white-space@2.1.0: {}
 
@@ -31385,6 +31437,12 @@ snapshots:
   dotenv@16.4.7: {}
 
   doublearray@0.0.2: {}
+
+  drbg.js@1.0.1:
+    dependencies:
+      browserify-aes: 1.2.0
+      create-hash: 1.2.0
+      create-hmac: 1.1.7
 
   dunder-proto@1.0.1:
     dependencies:
@@ -36533,8 +36591,7 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nan@2.22.0:
-    optional: true
+  nan@2.22.0: {}
 
   nanoassert@1.1.0: {}
 
@@ -39552,6 +39609,17 @@ snapshots:
   scule@1.3.0: {}
 
   search-insights@2.17.3: {}
+
+  secp256k1@3.8.1:
+    dependencies:
+      bindings: 1.5.0
+      bip66: 1.1.5
+      bn.js: 4.12.1
+      create-hash: 1.2.0
+      drbg.js: 1.0.1
+      elliptic: 6.6.1
+      nan: 2.22.0
+      safe-buffer: 5.2.1
 
   secp256k1@4.0.4:
     dependencies:
