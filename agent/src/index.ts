@@ -7,6 +7,7 @@ import { LensAgentClient } from "@ai16z/client-lens";
 import { SlackClientInterface } from "@ai16z/client-slack";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
+import { DevaClientInterface } from "@ai16z/client-deva";
 import {
     AgentRuntime,
     CacheManager,
@@ -407,6 +408,11 @@ export async function initializeClients(
     if (clientTypes.includes("slack")) {
         const slackClient = await SlackClientInterface.start(runtime);
         if (slackClient) clients.slack = slackClient; // Use object property instead of push
+    }
+
+    if (clientTypes.includes("deva")) {
+        const devaClients = await DevaClientInterface.start(runtime);
+        clients.push(devaClients);
     }
 
     if (character.plugins?.length > 0) {
