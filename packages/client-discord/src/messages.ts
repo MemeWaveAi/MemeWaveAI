@@ -1,4 +1,4 @@
-import { composeContext } from "@ai16z/eliza";
+import { composeContext, composeRandomUser } from "@ai16z/eliza";
 import { generateMessageResponse, generateShouldRespond } from "@ai16z/eliza";
 import {
     Content,
@@ -1228,7 +1228,7 @@ export class MessageManager {
                 this.runtime.character.templates
                     ?.discordShouldRespondTemplate ||
                 this.runtime.character.templates?.shouldRespondTemplate ||
-                discordShouldRespondTemplate,
+                composeRandomUser(discordShouldRespondTemplate, 2),
         });
 
         const response = await generateShouldRespond({
